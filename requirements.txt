@@ -1,0 +1,6 @@
+torch
+ultralytics
+numpy
+psutil
+opencv-python
+pillow
