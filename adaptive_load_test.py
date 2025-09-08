@@ -144,22 +144,46 @@ class AdaptiveLoadTester:
             return False, {"error": str(e)}
     
     async def find_maximum_streams(self) -> dict:
-        """Test maximum stream count - simple single test"""
-        self.logger.info("🎯 Starting Maximum Stream Test")
-        self.logger.info(f"Testing {self.initial_max} concurrent FR streams")
-        self.logger.info(f"Duration: {self.test_duration} seconds")
+        """Simple test - set cameras, run until time finishes, show summary"""
+        print(f"Testing {self.initial_max} cameras for {self.test_duration} seconds...")
         
-        # Single test at maximum
-        stable, result = await self.test_stream_count(self.initial_max)
+        # Create tester and run
+        tester = CameraStreamLoadTester(
+            max_concurrent=self.initial_max,
+            test_duration=self.test_duration
+        )
         
-        if stable:
-            self.best_stable_count = result["achieved_streams"]
-            self.logger.info(f"✅ SUCCESS: {self.best_stable_count} streams stable")
+        report = await tester.run_load_test()
+        
+        if "error" in report:
+            print(f"Test failed: {report['error']}")
+            return {"error": report["error"]}
+        
+        # Show summary
+        perf = report["stream_performance"]
+        test_info = report["test_info"]
+        
+        print(f"\n=== SUMMARY ===")
+        print(f"Target cameras: {self.initial_max}")
+        print(f"Achieved cameras: {test_info['max_concurrent_achieved']}")
+        print(f"Test duration: {test_info['duration_seconds']}s")
+        print(f"Total frames: {perf['total_frames_received']:,}")
+        print(f"Total reconnections: {perf['total_reconnections']}")
+        print(f"Average FPS per camera: {perf['average_fps']}")
+        
+        # Show per-camera reconnections if any
+        reconnections = [(s['camera_id'], s['reconnections']) 
+                        for s in report['individual_streams'] 
+                        if s['reconnections'] > 0]
+        
+        if reconnections:
+            print(f"\nReconnections per camera:")
+            for cam_id, count in reconnections:
+                print(f"  Camera {cam_id}: {count} reconnections")
         else:
-            self.logger.info(f"❌ UNSTABLE: Only {result.get('achieved_streams', 0)} streams achieved")
-            self.best_stable_count = result.get("achieved_streams", 0)
+            print(f"\nNo reconnections - all cameras stable!")
         
-        return self.generate_final_report()
+        return report
     
     def generate_final_report(self) -> dict:
         """Generate comprehensive report of the adaptive testing process"""
