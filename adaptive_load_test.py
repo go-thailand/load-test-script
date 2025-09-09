@@ -147,6 +147,16 @@ class AdaptiveLoadTester:
         """Simple test - set cameras, run until time finishes, show summary"""
         print(f"Testing {self.initial_max} cameras for {self.test_duration} seconds...")
         
+        # Set exception handler for asyncio to suppress SSL errors
+        loop = asyncio.get_running_loop()
+        def exception_handler(loop, context):
+            exception = context.get('exception')
+            if isinstance(exception, Exception) and 'SSL' in str(exception):
+                return  # Silently ignore SSL errors
+            # Log other exceptions
+            print(f"Asyncio exception: {context}")
+        loop.set_exception_handler(exception_handler)
+        
         # Create tester and run
         tester = CameraStreamLoadTester(
             max_concurrent=self.initial_max,
