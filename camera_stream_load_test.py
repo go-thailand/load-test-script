@@ -30,6 +30,8 @@ from dataclasses import dataclass, asdict
 from collections import defaultdict
 import psutil
 import statistics
+import random
+import os
 
 @dataclass
 class StreamStats:
@@ -51,10 +53,12 @@ class StreamStats:
 
 class CameraStreamLoadTester:
     def __init__(self, api_url: str = "https://cc.nttagid.com/api/v1/camera/", 
-                 max_concurrent: int = 50, test_duration: int = 300):
+                 max_concurrent: int = 50, test_duration: int = 300,
+                 shuffle_cameras: bool = True):
         self.api_url = api_url
         self.max_concurrent = max_concurrent
         self.test_duration = test_duration
+        self.shuffle_cameras = shuffle_cameras
         
         # Test state
         self.active_streams: Dict[int, StreamStats] = {}
@@ -73,8 +77,9 @@ class CameraStreamLoadTester:
             'total_errors': 0
         }
         
-        # Setup logging with unique logger name
-        self.log_filename = f'camera_load_test_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
+        # Setup logging with unique logger name (saved under logs/)
+        os.makedirs('logs', exist_ok=True)
+        self.log_filename = os.path.join('logs', f'camera_load_test_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
         
         # Create logger
         self.logger = logging.getLogger(f"CameraLoadTester_{id(self)}")
@@ -345,7 +350,15 @@ class CameraStreamLoadTester:
             self.logger.error("No active cameras found")
             return {"error": "No active cameras found"}
         
-        # Limit cameras to max concurrent
+        # Optionally shuffle before selecting test set
+        if self.shuffle_cameras:
+            try:
+                random.shuffle(cameras)
+                self.logger.info("Camera list shuffled before selection")
+            except Exception as e:
+                self.logger.warning(f"Could not shuffle cameras: {e}")
+
+        # Limit cameras to max concurrent (after shuffle if enabled)
         test_cameras = cameras[:self.max_concurrent]
         self.logger.info(f"Testing with {len(test_cameras)} cameras")
         
@@ -552,9 +565,22 @@ class CameraStreamLoadTester:
 
 def save_report(report: Dict, filename: str = None) -> str:
     """Save report to JSON file"""
+    # Ensure reports directory exists
+    os.makedirs('reports', exist_ok=True)
+
     if not filename:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"camera_stream_load_test_report_{timestamp}.json"
+    
+    # If no directory specified in filename, save under reports/
+    if not os.path.dirname(filename):
+        filename = os.path.join('reports', filename)
+    else:
+        # Ensure the directory for the given filename exists
+        try:
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+        except Exception:
+            pass
     
     try:
         with open(filename, 'w', encoding='utf-8') as f:
@@ -617,6 +643,9 @@ async def main():
                        help='Test duration in seconds')
     parser.add_argument('--output', '-o', 
                        help='Output filename for report (auto-generated if not specified)')
+    parser.add_argument('--no-shuffle', dest='shuffle', action='store_false',
+                       help='Disable shuffling cameras before selection')
+    parser.set_defaults(shuffle=True)
     
     args = parser.parse_args()
     
@@ -624,7 +653,8 @@ async def main():
     tester = CameraStreamLoadTester(
         api_url=args.api_url,
         max_concurrent=args.max_streams,
-        test_duration=args.duration
+        test_duration=args.duration,
+        shuffle_cameras=args.shuffle
     )
     
     try:
