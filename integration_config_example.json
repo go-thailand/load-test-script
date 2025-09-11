@@ -1,0 +1,211 @@
+{
+  "integrations": [
+    {
+      "name": "prometheus_pushgateway",
+      "type": "monitoring",
+      "endpoint": "http://prometheus-pushgateway:9091",
+      "authentication": {
+        "type": "none"
+      },
+      "enabled": true,
+      "retry_count": 3,
+      "timeout": 30,
+      "custom_headers": {}
+    },
+    {
+      "name": "grafana_annotations",
+      "type": "monitoring",
+      "endpoint": "http://grafana:3000",
+      "authentication": {
+        "type": "bearer",
+        "token": "your_grafana_api_token_here"
+      },
+      "enabled": true,
+      "retry_count": 2,
+      "timeout": 15
+    },
+    {
+      "name": "slack_notifications",
+      "type": "webhook",
+      "endpoint": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+      "authentication": {
+        "type": "none"
+      },
+      "enabled": true,
+      "retry_count": 3,
+      "timeout": 10,
+      "custom_headers": {
+        "Content-Type": "application/json"
+      }
+    },
+    {
+      "name": "teams_notifications",
+      "type": "webhook", 
+      "endpoint": "https://your-tenant.webhook.office.com/webhookb2/YOUR-WEBHOOK-URL",
+      "authentication": {
+        "type": "none"
+      },
+      "enabled": true,
+      "retry_count": 2,
+      "timeout": 15
+    },
+    {
+      "name": "jenkins_integration",
+      "type": "cicd",
+      "endpoint": "http://jenkins:8080",
+      "authentication": {
+        "type": "api_key",
+        "header": "Authorization",
+        "key": "Basic your_encoded_credentials_here"
+      },
+      "enabled": false,
+      "retry_count": 2,
+      "timeout": 30
+    },
+    {
+      "name": "jira_tickets",
+      "type": "ticketing",
+      "endpoint": "https://your-company.atlassian.net",
+      "authentication": {
+        "type": "bearer",
+        "token": "your_jira_api_token_here"
+      },
+      "enabled": false,
+      "retry_count": 3,
+      "timeout": 30
+    },
+    {
+      "name": "datadog_metrics",
+      "type": "monitoring",
+      "endpoint": "https://api.datadoghq.com",
+      "authentication": {
+        "type": "api_key",
+        "header": "DD-API-KEY", 
+        "key": "your_datadog_api_key_here"
+      },
+      "enabled": false,
+      "retry_count": 3,
+      "timeout": 20
+    },
+    {
+      "name": "elasticsearch_analytics",
+      "type": "analytics",
+      "endpoint": "http://elasticsearch:9200",
+      "authentication": {
+        "type": "basic",
+        "username": "elastic",
+        "password": "your_password_here"
+      },
+      "enabled": false,
+      "retry_count": 2,
+      "timeout": 25
+    }
+  ],
+  "notifications": [
+    {
+      "platform": "slack",
+      "webhook_url": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+      "channel": "#load-testing-alerts",
+      "recipients": [],
+      "severity_filters": ["critical", "high"]
+    },
+    {
+      "platform": "teams",
+      "webhook_url": "https://your-tenant.webhook.office.com/webhookb2/YOUR-WEBHOOK-URL",
+      "channel": "Load Testing Team",
+      "recipients": [],
+      "severity_filters": ["critical", "high", "medium"]
+    },
+    {
+      "platform": "email",
+      "api_key": "your_sendgrid_api_key_here",
+      "recipients": [
+        "devops-team@company.com",
+        "engineering-leads@company.com"
+      ],
+      "severity_filters": ["critical"]
+    },
+    {
+      "platform": "pagerduty",
+      "api_key": "your_pagerduty_routing_key_here",
+      "severity_filters": ["critical"]
+    }
+  ],
+  "monitoring": [
+    {
+      "system": "prometheus",
+      "endpoint": "http://prometheus-pushgateway:9091",
+      "metric_prefix": "camera_load_test",
+      "custom_tags": {
+        "environment": "production",
+        "team": "platform",
+        "service": "camera_streaming"
+      }
+    },
+    {
+      "system": "grafana",
+      "endpoint": "http://grafana:3000",
+      "api_key": "your_grafana_api_token_here",
+      "dashboard_id": "camera-load-testing",
+      "custom_tags": {
+        "environment": "production"
+      }
+    },
+    {
+      "system": "datadog",
+      "endpoint": "https://api.datadoghq.com",
+      "api_key": "your_datadog_api_key_here",
+      "metric_prefix": "camera.load_test",
+      "custom_tags": {
+        "env": "prod",
+        "service": "camera-streaming",
+        "team": "platform"
+      }
+    },
+    {
+      "system": "newrelic",
+      "endpoint": "https://insights-collector.newrelic.com",
+      "api_key": "your_newrelic_insert_key_here",
+      "metric_prefix": "CameraLoadTest",
+      "custom_tags": {
+        "account_id": "your_account_id",
+        "environment": "production"
+      }
+    }
+  ],
+  "dashboard_config": {
+    "refresh_intervals": {
+      "executive": 60,
+      "technical": 30,
+      "operations": 15
+    },
+    "alert_thresholds": {
+      "avg_fps": {
+        "warning": 15.0,
+        "critical": 10.0
+      },
+      "cpu_usage": {
+        "warning": 80.0,
+        "critical": 90.0
+      },
+      "memory_usage": {
+        "warning": 85.0,
+        "critical": 95.0
+      },
+      "reconnection_rate": {
+        "warning": 0.2,
+        "critical": 0.5
+      }
+    },
+    "data_retention_days": 90,
+    "auto_cleanup_enabled": true
+  },
+  "feature_flags": {
+    "enhanced_analytics": true,
+    "predictive_insights": false,
+    "automated_remediation": false,
+    "machine_learning_analysis": false,
+    "advanced_visualizations": true,
+    "mobile_app_integration": false
+  }
+}
