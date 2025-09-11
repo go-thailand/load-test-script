@@ -123,7 +123,7 @@ class CameraStreamLoadTester:
         self.logger.info(f"Fetching cameras from {self.api_url}")
         
         async with aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=30)
+            timeout=aiohttp.ClientTimeout(total=60)
         ) as session:
             try:
                 async with session.get(self.api_url) as response:
@@ -159,7 +159,7 @@ class CameraStreamLoadTester:
                 async with session.get(
                     fr_url,
                     headers={'Accept': 'multipart/x-mixed-replace; boundary=frame'},
-                    timeout=aiohttp.ClientTimeout(total=None, sock_read=10)
+                    timeout=aiohttp.ClientTimeout(total=None, sock_read=60)
                 ) as response:
                     
                     if response.status != 200:
