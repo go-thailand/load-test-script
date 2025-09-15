@@ -32,6 +32,7 @@ import psutil
 import statistics
 import random
 import os
+from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
 
 @dataclass
 class StreamStats:
@@ -54,11 +55,12 @@ class StreamStats:
 class CameraStreamLoadTester:
     def __init__(self, api_url: str = "https://cc.nttagid.com/api/v1/camera/", 
                  max_concurrent: int = 50, test_duration: int = 300,
-                 shuffle_cameras: bool = True):
+                 shuffle_cameras: bool = True, prefix: str = ""):
         self.api_url = api_url
         self.max_concurrent = max_concurrent
         self.test_duration = test_duration
         self.shuffle_cameras = shuffle_cameras
+        self.prefix = prefix or ""
         
         # Test state
         self.active_streams: Dict[int, StreamStats] = {}
@@ -120,13 +122,25 @@ class CameraStreamLoadTester:
     
     async def get_active_cameras(self) -> List[Dict]:
         """Fetch cameras with status = 1 from the API"""
-        self.logger.info(f"Fetching cameras from {self.api_url}")
+        # Build API URL with optional prefix query param
+        url = self.api_url
+        try:
+            parsed = urlparse(self.api_url)
+            query_params = dict(parse_qsl(parsed.query, keep_blank_values=True))
+            if self.prefix != "":
+                query_params["prefix"] = self.prefix
+            new_query = urlencode(query_params)
+            url = urlunparse(parsed._replace(query=new_query))
+        except Exception:
+            url = self.api_url  # Fallback to original on parse error
+
+        self.logger.info(f"Fetching cameras from {url}")
         
         async with aiohttp.ClientSession(
             timeout=aiohttp.ClientTimeout(total=60)
         ) as session:
             try:
-                async with session.get(self.api_url) as response:
+                async with session.get(url) as response:
                     if response.status != 200:
                         raise Exception(f"API returned status {response.status}")
                     
@@ -637,6 +651,7 @@ async def main():
     parser = argparse.ArgumentParser(description='Camera Stream Load Testing Tool')
     parser.add_argument('--api-url', default='https://cc.nttagid.com/api/v1/camera/', 
                        help='Camera API endpoint URL')
+    parser.add_argument('--prefix', default='', help='Optional prefix query for API requests')
     parser.add_argument('--max-streams', type=int, default=50, 
                        help='Maximum concurrent streams to test')
     parser.add_argument('--duration', type=int, default=300, 
@@ -654,7 +669,8 @@ async def main():
         api_url=args.api_url,
         max_concurrent=args.max_streams,
         test_duration=args.duration,
-        shuffle_cameras=args.shuffle
+        shuffle_cameras=args.shuffle,
+        prefix=args.prefix
     )
     
     try:

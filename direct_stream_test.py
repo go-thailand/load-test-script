@@ -10,8 +10,9 @@ Runs a fixed number of concurrent FR streams with comprehensive analytics.
 - Saves detailed reports and CSVs for data science analysis
 
 Usage:
-    python direct_stream_test.py 4           # 4 streams, 120s duration
-    python direct_stream_test.py 4 300       # 4 streams, 300s duration
+    python direct_stream_test.py 4                         # 4 streams, 120s duration
+    python direct_stream_test.py 4 300                     # 4 streams, 300s duration
+    python direct_stream_test.py 4 300 --prefix=sai1       # with optional API prefix
 """
 
 import asyncio
@@ -29,7 +30,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from camera_stream_load_test import CameraStreamLoadTester, save_report
 
 class DirectLoadTester:
-    def __init__(self, stream_count: int, test_duration: int = 120):
+    def __init__(self, stream_count: int, test_duration: int = 120, prefix: str = ""):
         """
         Args:
             stream_count: Number of concurrent streams to test
@@ -37,6 +38,7 @@ class DirectLoadTester:
         """
         self.stream_count = stream_count
         self.test_duration = test_duration
+        self.prefix = prefix or ""
         
         # Setup logging with unique logger name (saved under logs/)
         os.makedirs('logs', exist_ok=True)
@@ -89,7 +91,8 @@ class DirectLoadTester:
         tester = CameraStreamLoadTester(
             max_concurrent=self.stream_count,
             test_duration=self.test_duration,
-            shuffle_cameras=True  # Enable camera shuffling for variety
+            shuffle_cameras=True,  # Enable camera shuffling for variety
+            prefix=self.prefix
         )
         
         try:
@@ -418,16 +421,26 @@ def print_direct_summary(report: dict):
 
 async def main():
     """Main entry point for direct load testing"""
+    # Parse CLI args: <stream_count> [duration_seconds] [--prefix=VALUE]
     if len(sys.argv) < 2:
-        print("Usage: python direct_stream_test.py <stream_count> [duration_seconds]")
-        print("Example: python direct_stream_test.py 4 120")
+        print("Usage: python direct_stream_test.py <stream_count> [duration_seconds] [--prefix=VALUE]")
+        print("Example: python direct_stream_test.py 4 300 --prefix=sai1")
         sys.exit(1)
-    
+
+    # Extract optional --prefix argument, keep numeric args clean
+    prefix = ""
+    numeric_args = []
+    for arg in sys.argv[1:]:
+        if arg.startswith("--prefix="):
+            prefix = arg.split("=", 1)[1]
+        else:
+            numeric_args.append(arg)
+
     try:
-        stream_count = int(sys.argv[1])
-        duration = int(sys.argv[2]) if len(sys.argv) > 2 else 120
-    except ValueError:
-        print("Error: Please provide valid numbers")
+        stream_count = int(numeric_args[0])
+        duration = int(numeric_args[1]) if len(numeric_args) > 1 else 120
+    except (ValueError, IndexError):
+        print("Error: Please provide valid numbers for <stream_count> and optional [duration_seconds]")
         sys.exit(1)
     
     if stream_count <= 0:
@@ -439,6 +452,8 @@ async def main():
     print(f"Testing {stream_count} concurrent FR streams with shuffled camera selection")
     print("="*80)
     print()
+    if prefix:
+        print(f"   API prefix: {prefix}")
     
     print(f"🔧 Configuration:")
     print(f"   Target streams: {stream_count}")
@@ -451,7 +466,8 @@ async def main():
     # Create and run direct tester
     tester = DirectLoadTester(
         stream_count=stream_count,
-        test_duration=duration
+        test_duration=duration,
+        prefix=prefix
     )
     
     try:
